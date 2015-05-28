@@ -14,7 +14,7 @@
 
 ## Overview
 
-This module allows the user to modify the settings of their proxies used on Windows machines as set in the Internet Settings snap-in within the Control Panel. This module was directly tested against Windows Server 2012 R2 but should work against most Windows versions.
+This module allows the user to modify the settings of their proxies used on Windows machines as set in the Internet Settings snap-in within the Control Panel. This module was directly tested against Windows Server 2012 R2 but should work against most Windows versions. For reference on this snap-in, please see the following page: http://windows.microsoft.com/en-us/windows/change-ics-internet-settings#1TC=windows-7
 
 ## Module Description
 
