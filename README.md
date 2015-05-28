@@ -8,7 +8,7 @@
     * [What win_proxy affects](#what-win_proxy-affects)
     * [Beginning with win_proxy](#beginning-with-win_proxy)
 4. [Usage - Configuration options and additional functionality](#usage)
-5. [Reference - An under-the-hood peek at what the module is doing and how](#reference)
+5. [Example](#example)
 5. [Limitations - OS compatibility, etc.](#limitations)
 6. [Development - Guide for contributing to the module](#development)
 
@@ -65,13 +65,17 @@ This accepts a boolean as to whether "Use automatic configuration script" should
 #####`$autoscript_url`
 This accepts a string containing the address you would like to use if utilizing "Use automatic configuration script". This will only take affect if $autoscript is set to true. (Default: 'http://test.example.com/file.pac')
 
-## Reference
-
-Here, list the classes, types, providers, facts, etc contained in your module.
-This section should include all of the under-the-hood workings of your module so
-people know what the module is touching on their system but don't need to mess
-with things. (We are working on automating this section!)
-
+## Example
+```puppet
+class {'win_proxy':
+  autodetect     => true,
+  staticproxy    => true,
+  proxyserver    => '127.0.0.1:80',
+  localoverride  => false,
+  autoscript     => false,
+  autoscript_url => 'http://myproxyscript.lan/script.pac',
+}
+```
 ## Limitations
 
 Currently tested only against Windows Server 2012 R2.
