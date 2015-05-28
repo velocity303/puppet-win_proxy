@@ -6,7 +6,6 @@
 2. [Module Description - What the module does and why it is useful](#module-description)
 3. [Setup - The basics of getting started with win_proxy](#setup)
     * [What win_proxy affects](#what-win_proxy-affects)
-    * [Setup requirements](#setup-requirements)
     * [Beginning with win_proxy](#beginning-with-win_proxy)
 4. [Usage - Configuration options and additional functionality](#usage)
 5. [Reference - An under-the-hood peek at what the module is doing and how](#reference)
@@ -15,46 +14,56 @@
 
 ## Overview
 
-A one-maybe-two sentence summary of what the module does/what problem it solves.
-This is your 30 second elevator pitch for your module. Consider including
-OS/Puppet version it works with.
+This module allows the user to modify the settings of their proxies used on Windows machines as set in the Internet Settings snap-in within the Control Panel. This module was directly tested against Windows Server 2012 R2 but should work against most Windows versions.
 
 ## Module Description
 
-If applicable, this section should have a brief description of the technology
-the module integrates with and what that integration enables. This section
-should answer the questions: "What does this module *do*?" and "Why would I use
-it?"
+This module allows you to set the following settings within the snap in.
+ - Automatically Detect Settings
+ - Use Automatic Configuration Script
+   - Address
+ - Use a proxy server for your LAN (These settings will not apply to dial-up or VPN connections)
+   - Address
+   - Port
+   - Bypass proxy server for local address
 
-If your module has a range of functionality (installation, configuration,
-management, etc.) this is the time to mention it.
+At this time this module does not allow for more advanced configurations past these settings.
 
 ## Setup
 
 ### What win_proxy affects
 
-* A list of files, packages, services, or operations that the module will alter,
-  impact, or execute on the system it's installed on.
-* This is a great place to stick any warnings.
-* Can be in list or paragraph form.
+This module will affect the registry settings behind these entries within the HKCU registry area.
 
-### Setup Requirements **OPTIONAL**
+### Setup Requirements
 
-If your module requires anything extra before setting up (pluginsync enabled,
-etc.), mention it here.
+This module requires the puppetlabs-stdlib and puppetlabs-powershell modules.
 
 ### Beginning with win_proxy
 
-The very basic steps needed for a user to get the module up and running.
-
-If your most recent release breaks compatibility or requires particular steps
-for upgrading, you may wish to include an additional section here: Upgrading
-(For an example, see http://forge.puppetlabs.com/puppetlabs/firewall).
+This module by default will enable "Automatically Detect Settings" within the snap-in. If you need additional customization please see the usage details below. 
 
 ## Usage
 
-Put the classes, types, and resources for customizing, configuring, and doing
-the fancy stuff with your module here.
+Parameters:
+
+#####`$autodetect`
+This accepts a boolean for whether "Automatically Detect Settings" should be enabled or disabled (Default: true)
+
+#####`$staticproxy`
+This accepts a boolean for whether "Use a proxy server for your LAN" should be enabled or disabled (Default: false)
+
+#####`$proxyserver`
+This accepts a string containing the static proxy server you would like to use. It will only take affect if $staticproxy is true It should be formatted as 'hostname:port'. (Default: '127.0.0.1:80')
+
+#####`$localoverride`
+This accepts a boolean for whether "Bypass proxy server for local addresses" should be enabled or disabled. This only takes affect if $staticproxy is true. (Default: false)
+
+#####`$autoscript`
+This accepts a boolean as to whether "Use automatic configuration script" should be enabled or disabled. (Default: false)
+
+#####`$autoscript_url`
+This accepts a string containing the address you would like to use if utilizing "Use automatic configuration script". This will only take affect if $autoscript is set to true. (Default: 'http://test.example.com/file.pac')
 
 ## Reference
 
@@ -65,15 +74,11 @@ with things. (We are working on automating this section!)
 
 ## Limitations
 
-This is where you list OS compatibility, version compatibility, etc.
+Currently tested only against Windows Server 2012 R2.
 
 ## Development
 
-Since your module is awesome, other users will want to play with it. Let them
-know what the ground rules for contributing are.
+All contributions are welcome. Feel free to fork and contribute or file an issue.
 
-## Release Notes/Contributors/Etc **Optional**
-
-If you aren't using changelog, put your release notes here (though you should
-consider using changelog). You may also add any additional sections you feel are
-necessary or important to include here. Please use the `## ` header.
+## Release Notes
+Currently on the initial release
