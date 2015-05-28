@@ -1,39 +1,56 @@
 # == Class: win_proxy
 #
+# This module allows you to set the following settings within the snap in.
+# - Automatically Detect Settings
+# - Use Automatic Configuration Script
+#   - Address
+# - Use a proxy server for your LAN (These settings will not apply to dial-up or VPN connections)
+#   - Address
+#   - Port
+#   - Bypass proxy server for local address
+#
+# At this time this module does not allow for more advanced configurations past these settings.
+#
 # Full description of class win_proxy here.
 #
 # === Parameters
 #
-# Document parameters here.
+# $autodetect
+# This accepts a boolean for whether "Automatically Detect Settings" should be enabled or disabled (Default: true)
 #
-# [*sample_parameter*]
-#   Explanation of what this parameter affects and what it defaults to.
-#   e.g. "Specify one or more upstream ntp servers as an array."
+# $staticproxy
+# This accepts a boolean for whether "Use a proxy server for your LAN" should be enabled or disabled (Default: false)
 #
-# === Variables
+# $proxyserver
+# This accepts a string containing the static proxy server you would like to use. It will only take affect if $staticproxy is true It should be formatted as 'hostname:port'. (Default: '127.0.0.1:80')
 #
-# Here you should define a list of variables that this module would require.
-#
-# [*sample_variable*]
-#   Explanation of how this variable affects the funtion of this class and if
-#   it has a default. e.g. "The parameter enc_ntp_servers must be set by the
-#   External Node Classifier as a comma separated list of hostnames." (Note,
-#   global variables should be avoided in favor of class parameters as
-#   of Puppet 2.6.)
+# $localoverride
+# This accepts a boolean for whether "Bypass proxy server for local addresses" should be enabled or disabled. This only takes affect if $staticproxy is true. (Default: false)
+
+# $autoscript
+# This accepts a boolean as to whether "Use automatic configuration script" should be enabled or disabled. (Default: false)
+
+# $autoscript_url
+# This accepts a string containing the address you would like to use if utilizing "Use automatic configuration script". This will only take affect if $autoscript is set to true. (Default: 'http://test.example.com/file.pac')
 #
 # === Examples
 #
-#  class { 'win_proxy':
-#    servers => [ 'pool.ntp.org', 'ntp.local.company.com' ],
-#  }
+# class {'win_proxy':
+#   autodetect     => true,
+#   staticproxy    => true,
+#   proxyserver    => '127.0.0.1:80',
+#   localoverride  => false,
+#   autoscript     => false,
+#   autoscript_url => 'http://myproxyscript.lan/script.pac',
+# }
 #
 # === Authors
 #
-# Author Name <author@domain.com>
+# James E. Jones <velocity303@gmail.com>
 #
 # === Copyright
 #
-# Copyright 2015 Your name here, unless otherwise noted.
+# Copyright 2015 James E. Jones 
 #
 class win_proxy (
   $autodetect     = true,
