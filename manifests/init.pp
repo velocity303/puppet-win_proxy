@@ -53,90 +53,150 @@
 # Copyright 2015 James E. Jones 
 #
 class win_proxy (
-  $autodetect     = true,
-  $staticproxy    = false,
-  $proxyserver    = '127.0.0.1:8080',
-  $localoverride  = false,
-  $autoscript     = false,
-  $autoscript_url = 'http://test.example.com/proxy.pac',
-)
-{
-  validate_bool($autodetect)
-  validate_bool($staticproxy)
-  validate_bool($localoverride)
-  validate_bool($autoscript)
+  Boolean $autodetect     = true,
+  Boolean $staticproxy    = false,
+  String  $proxyserver    = '127.0.0.1:8080',
+  Boolean $localoverride  = false,
+  Boolean $autoscript     = false,
+  String  $autoscript_url = 'http://test.example.com/proxy.pac',
+) {
 
-  if $autodetect == true and $autoscript == true and $staticproxy == true {
-    $bitnum = 15
-  }
-  if $autodetect == true and $autoscript == true and $staticproxy == false {
-    $bitnum = 13
-  }
-  if $autodetect == true and $autoscript == false and $staticproxy == true {
-    $bitnum = 11
-  }
-  if $autodetect == true and $autoscript == false and $staticproxy == false {
-    $bitnum = 9
-  }
-  if $autodetect == false and $autoscript == true and $staticproxy == true {
-    $bitnum = 7
-  }
-  if $autodetect == false and $autoscript == true and $staticproxy == false {
-    $bitnum = 5
-  }
-  if $autodetect == false and $autoscript == false and $staticproxy == true {
-    $bitnum = 3
-  }
-  if $autodetect == false and $autoscript == false and $staticproxy == false {
-    $bitnum = 1
-  }
+  # Each option sets a bit in a bitmap. Determine the numeric value of that
+  # bitmap. The first value in the bitmap is always 1.
+  $bitnum = $autodetect.bool2num  * 8 +
+            $autoscript.bool2num  * 4 +
+            $staticproxy.bool2num * 2 + 1
+
   exec { 'Set Default Connection Settings':
-    command  => "\$regKeyPath = \"HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Connections\"; \$conSet = $(Get-ItemProperty \$regKeyPath).DefaultConnectionSettings; \$conSet[8] = ${bitnum}; Set-ItemProperty -Path \$regKeyPath -Name DefaultConnectionSettings -Value \$conSet; Set-ItemProperty -Path \$regKeyPath -Name DefaultConnectionSettings -Value \$conSet",
     provider => powershell,
-    unless   => "if ($(Get-ItemProperty \"HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Connections\").DefaultConnectionSettings[8] -eq ${bitnum})  {return 0} else {write-error 1}",
+    command  => @("SCRIPT"/$),
+      \$regKeyPath = "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Connections"
+      \$conSet = $(Get-ItemProperty \$regKeyPath).DefaultConnectionSettings
+      \$conSet[8] = ${bitnum}
+      Set-ItemProperty -Path \$regKeyPath -Name DefaultConnectionSettings -Value \$conSet
+      Set-ItemProperty -Path \$regKeyPath -Name DefaultConnectionSettings -Value \$conSet
+      | SCRIPT
+    unless   => @("SCRIPT"/$),
+      \$regKeyPath = "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Connections"
+      if ($(Get-ItemProperty \$regKeyPath).DefaultConnectionSettings[8] -eq ${bitnum}) {
+        return 0
+      } else {
+        write-error 1
+      }
+      | SCRIPT
   }
-  if $staticproxy == true {
+
+  if $staticproxy {
     exec { 'Turn on specified proxy':
-      command   => "\$proxyServerToDefine = \"${proxyserver}\"; \$regKey=\"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\"; Set-ItemProperty -path \$regKey -name ProxyEnable -value 1; Set-ItemProperty -path \$regKey ProxyServer -value \$proxyServerToDefine",
       provider  => powershell,
-      unless    => "\$proxyServerToDefine = \"${proxyserver}\"; \$regKey=\"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\"; if((Get-ItemProperty -path \$regKey -name ProxyServer).ProxyServer -eq \$proxyServerToDefine) {return 0} else {write-error 1}",
       require   => Exec['Set Default Connection Settings'],
+      command   => @("SCRIPT"/$),
+        \$proxyServerToDefine = "${proxyserver}"
+        \$regKey="HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
+        Set-ItemProperty -path \$regKey -name ProxyEnable -value 1
+        Set-ItemProperty -path \$regKey ProxyServer -value \$proxyServerToDefine
+        | SCRIPT
+      unless    => @("SCRIPT"/$)
+        \$proxyServerToDefine = "${proxyserver}"
+        \$regKey="HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
+        if((Get-ItemProperty -path \$regKey -name ProxyServer).ProxyServer -eq \$proxyServerToDefine) {
+          return 0
+        } else {
+          write-error 1
+        }
+        | SCRIPT
     }
-    if $localoverride == true {
+
+    if $localoverride {
       exec { 'Turn on local proxy override':
-        command  => '$regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"; Set-ItemProperty -path $regKey -name ProxyOverride -value "<local>"',
         provider => powershell,
-        unless   => '$regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings\";try { Get-ItemProperty -path $regKey | select-object -ExpandProperty ProxyOverride -ErrorAction stop | Out-Null } catch { write-error 1}',
+        command  => @(SCRIPT),
+          $regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+          Set-ItemProperty -path $regKey -name ProxyOverride -value "<local>"
+          | SCRIPT
+        unless   => @(SCRIPT),
+          $regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+          try {
+            Get-ItemProperty -path $regKey | select-object -ExpandProperty ProxyOverride -ErrorAction stop | Out-Null
+          } catch {
+            write-error 1
+          }
+          | SCRIPT
       }
     }
     else {
       exec { 'Turn off local proxy override':
-        command  => '$regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"; Remove-ItemProperty -path $regKey -name ProxyOverride',
         provider => powershell,
-        onlyif   => '$regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings\";try { Get-ItemProperty -path $regKey | select-object -ExpandProperty ProxyOverride -ErrorAction stop | Out-Null } catch { write-error 1}',
+        command  => @(SCRIPT),
+          $regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+          Remove-ItemProperty -path $regKey -name ProxyOverride
+          | SCRIPT
+        onlyif   => @(SCRIPT),
+          $regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+          try {
+            Get-ItemProperty -path $regKey | select-object -ExpandProperty ProxyOverride -ErrorAction stop | Out-Null
+          } catch {
+            write-error 1
+          }
+          | SCRIPT
       }
     }
   }
   else {
     exec { 'Turn off proxy settings if they exist':
-      command   => '$regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"; Remove-ItemProperty -path $regKey -name ProxyServer; Set-ItemProperty -path $regKey -name ProxyEnable -value 0; Remove-ItemProperty -path $regKey -name ProxyOverride',
       provider  => powershell,
-      onlyif    => '$regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings\";try { Get-ItemProperty -path $regKey | select-object -ExpandProperty ProxyServer -ErrorAction stop | Out-Null } catch { write-error 1}',
+      command   => @(SCRIPT),
+        $regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+        Remove-ItemProperty -path $regKey -name ProxyServer
+        Set-ItemProperty -path $regKey -name ProxyEnable -value 0
+        Remove-ItemProperty -path $regKey -name ProxyOverride
+        | SCRIPT
+      onlyif    => @(SCRIPT),
+        $regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+        try {
+          Get-ItemProperty -path $regKey | select-object -ExpandProperty ProxyServer -ErrorAction stop | Out-Null
+        } catch {
+          write-error 1
+        }
+        | SCRIPT
     }
   }
-  if $autoscript == true {
+
+  if $autoscript {
     exec { 'Turn on specified autoconfig script':
-      command   => "\$proxyConfigToDefine = \"${autoscript_url}\"; \$regKey=\"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\"; Set-ItemProperty -path \$regKey AutoConfigURL -value \$proxyConfigToDefine",
       provider  => powershell,
-      unless    => "\$proxyConfigToDefine = \"${autoscript_url}\"; \$regKey=\"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\"; if((Get-ItemProperty -path \$regKey -name AutoConfigURL).AutoConfigURL -eq \$proxyConfigToDefine) {return 0} else {write-error 1}",
       require   => Exec['Set Default Connection Settings'],
+      command   => @("SCRIPT"/$),
+        \$proxyConfigToDefine = "${autoscript_url}"
+        \$regKey="HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
+        Set-ItemProperty -path \$regKey AutoConfigURL -value \$proxyConfigToDefine
+        | SCRIPT
+      unless    => @("SCRIPT"/$),
+        \$proxyConfigToDefine = "${autoscript_url}";
+        \$regKey="HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
+        if((Get-ItemProperty -path \$regKey -name AutoConfigURL).AutoConfigURL -eq \$proxyConfigToDefine) {
+          return 0
+        } else {
+          write-error 1
+        }
+        | SCRIPT
     }
   }
   else {
     exec { 'Turn off specified autoconfig script':
-      command   => '$regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"; Remove-ItemProperty -path $regKey -name AutoConfigURL',
       provider  => powershell,
-      onlyif    => '$regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings\";try { Get-ItemProperty -path $regKey | select-object -ExpandProperty AutoConfigURL -ErrorAction stop | Out-Null } catch { write-error 1}',
+      command   => @(SCRIPT),
+        $regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+        Remove-ItemProperty -path $regKey -name AutoConfigURL
+        | SCRIPT
+      onlyif    => @(SCRIPT),
+        $regKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+        try {
+          Get-ItemProperty -path $regKey | select-object -ExpandProperty AutoConfigURL -ErrorAction stop | Out-Null
+        } catch {
+          write-error 1
+        }
+        | SCRIPT
     }
   }
 }
